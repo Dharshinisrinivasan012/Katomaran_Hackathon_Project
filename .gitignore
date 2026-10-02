@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project data (runtime artifacts — keep structure via .gitkeep)
+data/crops/**
+data/faces/**
+data/sqlite/*.db
+data/sqlite/*.db-journal
+data/sqlite/*.db-wal
+data/sqlite/*.db-shm
+!data/**/.gitkeep
+
+# Logs
+logs/
+*.log
+!logs/.gitkeep
+
+# Secrets and local overrides
+.env
+.env.*
+secrets.json
+config.local.json
+
+# Models (large downloads — document paths in config)
+models/
+weights/
+*.onnx
+*.pt
+!models/.gitkeep
+
+# Jupyter / temp
+.ipynb_checkpoints/
+tmp/
+temp/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
