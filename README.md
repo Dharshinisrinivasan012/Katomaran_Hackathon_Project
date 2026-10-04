@@ -75,7 +75,7 @@ python -m src.pipeline.main --no-display --save-dir tmp/run
 | Database | SQLite (`sqlite3` stdlib) |
 | Configuration | JSON (`config.json`) |
 | Logging | Python `logging` + `logs/events.log` |
-| Tests | pytest (93 tests) |
+| Tests | pytest (94 tests) |
 
 ---
 
@@ -335,7 +335,7 @@ AI-assisted development is encouraged by the brief. Prompts used for all major i
 
 ## Demo video (submission requirement)
 
-**Demo link (Loom or YouTube):** _TODO — record a 2–3 minute walkthrough showing the pipeline running on the sample video before the submission deadline._
+**Demo link (Loom or YouTube):** _Record a 2–3 minute walkthrough before submitting. Show: `python -m src.pipeline.main --no-display --max-frames 30 --save-dir tmp/demo --db-path :memory:` running, the console summary, an annotated frame from `tmp/demo/`, and the entry/exit snapshots in `data/events/`._
 
 Submit the GitHub repository via the hackathon Google Form before **12:00 PM, Sunday, October 4, 2026**.
 

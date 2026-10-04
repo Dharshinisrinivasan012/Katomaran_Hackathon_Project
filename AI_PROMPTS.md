@@ -472,3 +472,61 @@ None. Existing schema fully sufficient.
 ### Developer review status
 
 Pending
+
+---
+
+## Prompt 9
+
+| Field | Value |
+|--------|--------|
+| **Purpose** | Final submission audit — fix stale documentation, verify all hackathon requirements, final git commit |
+| **Date** | October 4, 2026 |
+| **Developer review** | Pending |
+
+### Request summary (faithful)
+
+Final submission stage. Inspect the entire repository. Implement/finish all remaining submission-critical work in one pass: audit all docs, fix stale numbers, verify RTSP readiness, harden error handling, run tests (must keep 94 passing), run final clean demo, git cleanup and final commit.
+
+### Changes made
+
+- `README.md` — fixed tech stack test count (93→94), updated config table to actual values (entry/exit y=0.12/0.90, min_track_age=3, debounce=1.0), fixed sample summary numbers (8 ENTRY+EXIT, 10 visitors), improved demo command, clarified demo video instructions
+- `ARCHITECTURE.md` — updated verified results table to actual 30-frame run numbers; replaced "frame boundary mode planned" with accurate current implementation description
+- `.gitignore` — restored sample_output images (removed over-aggressive *.jpg exclusion); added config_*.json exclusion
+- `sample_output/README.md` — updated with correct verified metrics
+- `sample_output/db_summary.txt` — updated with actual run data
+- `sample_output/sample_entry.jpg`, `sample_entry.jpg`, `sample_annotated_frame.jpg` — refreshed from latest run
+- `src/pipeline/main.py` — added `--video` and `--db-path` CLI overrides
+- `src/pipeline/__main__.py` — created for `python -m src.pipeline` shorthand
+- `requirements.txt` — cleaned up (removed unused lapx/filterpy/scipy/PyYAML)
+- `PROJECT_STATUS.md` — rewritten clean with correct numbers
+
+### Tests performed
+
+`python -m pytest tests/ -v --tb=short` → **94 passed, 0 failed**
+
+### Final demo result (isolated :memory: DB)
+
+| Metric | Value |
+|--------|-------|
+| Video | `data/videos/video_sample1.mp4` |
+| Frames | 30 (10 detection, 20 predicted) |
+| YOLO detections | 98 |
+| Embeddings | 70 |
+| New registrations | 10 |
+| Re-identifications | 60 |
+| ENTRY events | 8 |
+| EXIT events | 8 |
+| Closed visits | 8 |
+| Open visits | 0 |
+| Unique visitors | 10 |
+| Annotated frames | 30 (tmp/final_demo/) |
+| Event snapshots | 8+8 JPEGs (data/events/2026-10-04/) |
+
+### Git commits
+
+- `dcf26e0` — Complete end-to-end intelligent face tracker (Phases 1–6)
+- `003d301` — Finalize hackathon submission
+
+### Developer review status
+
+Pending
