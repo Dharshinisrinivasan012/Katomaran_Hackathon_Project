@@ -15,6 +15,7 @@ def test_load_default_project_config(valid_config_path: Path) -> None:
     config = load_config(valid_config_path)
     assert config.project_name == "Intelligent Face Tracker"
     assert config.detection.detection_skip_frames == 2
+    assert config.detection.backend == "ultralytics"
     assert config.database.sqlite_path == "data/sqlite/face_tracker.db"
     assert config.config_path == valid_config_path.resolve()
 
@@ -40,7 +41,24 @@ def test_load_config_from_temp_valid_json(tmp_path: Path, valid_config_path: Pat
     dest = tmp_path / "config.json"
     dest.write_text(valid_config_path.read_text(encoding="utf-8"), encoding="utf-8")
     config = load_config(dest)
-    assert config.input.source_type == "video"
+    assert config.input.source_type == "file"
+
+
+def test_default_input_allows_file_without_local_sample(
+    valid_config_path: Path,
+) -> None:
+    config = load_config(valid_config_path)
+    assert config.input.source_type == "file"
+    assert isinstance(config.input.video_path, str)
+    assert isinstance(config.input.rtsp_url, str)
+
+
+def test_validate_rejects_unknown_input_source_type(valid_config_path: Path) -> None:
+    raw = json.loads(valid_config_path.read_text(encoding="utf-8"))
+    raw["input"]["source_type"] = "webcam"
+    with pytest.raises(ConfigValidationError) as exc:
+        validate_config_data(raw)
+    assert "source_type" in str(exc.value)
 
 
 def test_resolve_path_relative(project_root: Path, valid_config_path: Path) -> None:

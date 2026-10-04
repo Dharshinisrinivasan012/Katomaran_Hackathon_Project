@@ -2,9 +2,9 @@
   "project_name": "Test",
   "version": "0.0.1",
   "input": {
-    "source_type": "video",
-    "video_path": "data/samples/entrance.mp4",
-    "rtsp_url": "",
+    "source_type": "file",
+    "video_path": "",
+    "rtsp_url": "rtsp://<username>:<password>@<host>:<port>/<stream>",
     "reconnect_delay_sec": 5,
     "max_reconnect_attempts": 0,
     "frame_width": 0,
@@ -12,6 +12,8 @@
     "fps_limit": 0
   },
   "detection": {
+    "backend": "ultralytics",
+    "model_name": "yolov8-face",
     "model_path": "models/yolov8n-face.pt",
     "confidence_threshold": 0.5,
     "iou_threshold": 0.45,

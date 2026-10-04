@@ -1,12 +1,14 @@
-# AI Planning — Technical Plan (Phase 1)
+# AI Planning — Technical Plan
 
 **Project:** Intelligent Face Tracker with Auto-Registration and Visitor Counting  
 **Workspace:** `D:\katomaran`  
-**Phase:** Planning only — no CV pipeline implementation in this phase.
+**Status:** All phases complete. Full end-to-end pipeline implemented and verified.
 
-**Source of truth:** [docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf) (Katomaran hackathon brief). Supplementary notes in this file and [ARCHITECTURE.md](ARCHITECTURE.md) must not add mandatory requirements beyond the PDF unless labeled as an explicit design choice.
+**Source of truth:** [docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf) (Katomaran hackathon brief).
 
 **Persistence:** SQLite only (`database.sqlite_path` in config) — no MongoDB or PostgreSQL.
+
+**Video input:** Config-driven. `input.source_type` is `"file"` (local sample) or `"rtsp"` (interview stream). Official development samples: `https://drive.google.com/drive/folders/15YCN3CYb97GyIoNUV6NJxGNIf-rUBFUJ?usp=sharing`. Not committed to git; `input.video_path` must be set after download.
 
 ---
 
@@ -66,12 +68,12 @@ models/
 
 | Phase | Scope |
 |-------|--------|
-| **1 (current)** | Docs, config, schema, placeholders |
-| **2 (in progress)** | Config loader + validation, SQLite init/repositories, unit tests (logging + input deferred to later Phase 2 items) |
-| **3** | Detection + ByteTrack on video; visualize tracks |
-| **4** | InsightFace embed + gallery + auto-registration |
-| **5** | Entry/exit FSM, visits, unique counting, events.log |
-| **6** | Tests, tuning, CPU/GPU profiles, demo script |
+| **1** | Docs, config, schema, placeholders — done |
+| **2** | Config loader + validation, SQLite init/repositories, unit tests — done |
+| **3** | Video input (file + RTSP) + YOLO face detection + skip-frame policy + preview — done |
+| **4** | ByteTrack integration: YOLO boxes → `track_id` per face. Track IDs are temporary motion identities only — **not** Face IDs — done |
+| **5** | InsightFace buffalo_l: 512-dim ArcFace embeddings, cosine gallery search, UUID face_id registration, re-identification — done |
+| **6 (complete)** | Entry/exit FSM (line-crossing), VisitManager (open/close visits, snapshots), full `src/pipeline/main.py` end-to-end loop, `src/logging/` events.log, 93 tests passing. Verified on `video_sample1.mp4`. |
 
 ---
 
@@ -82,21 +84,18 @@ config = load_config("config.json")
 init_db(config.database.sqlite_path)
 init_logging(config.logging)
 
-source = create_input(config.input)
-detector = FaceDetector(config.detection)      # Phase 3+
-tracker = ByteTracker(config.tracking)       # Phase 3+
+source = create_frame_source(config)          # Phase 3
+detector = YoloFaceDetector(config.detection)  # Phase 3
+skip = DetectionSkipPolicy(config.detection.detection_skip_frames)
+tracker = ByteTracker(config.tracking)       # later phase
 recognizer = InsightFaceEngine(config.recognition)  # Phase 4+
 registrar = AutoRegistrar(config.registration)       # Phase 4+
 visit_logic = EntryExitManager(config.entry_exit)    # Phase 5+
 
-frame_idx = 0
 last_detections = []
 
 for frame in source:
-    frame_idx += 1
-    run_det = (frame_idx % (config.detection.detection_skip_frames + 1) == 1)
-
-    if run_det:
+    if skip.should_detect(frame.index):
         last_detections = detector.detect(frame)
     tracks = tracker.update(frame, last_detections)
 
@@ -277,7 +276,7 @@ Rotate via `logging.handlers.RotatingFileHandler` using config sizes.
 ## 15. Acceptance criteria for Phase 2 kickoff
 
 - [ ] Developer sign-off on this plan  
-- [ ] Sample video placed in `data/samples/`  
+- [ ] Sample video downloaded from the official Drive folder and `input.video_path` configured (file is not committed to Git)  
 - [ ] Models downloaded to `models/`  
 - [ ] `config.json` calibrated for deployment camera geometry  
 

@@ -1,6 +1,8 @@
 # System Architecture
 
-Intelligent Face Tracker — architecture reference aligned with [docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf). Phase 2 implements `src/config/` and `src/database/`; CV pipeline modules remain pending.
+Intelligent Face Tracker — architecture reference aligned with [docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf).
+
+**All modules implemented.** Complete end-to-end pipeline verified on `data/videos/video_sample1.mp4`. Entry/exit FSM, visit management, events.log, and face crop snapshots all working.
 
 ---
 
@@ -86,14 +88,73 @@ flowchart TB
 
 | Module | Responsibility | Config keys (examples) |
 |--------|----------------|-------------------------|
-| `input` | OpenCV capture; video loop or RTSP with reconnect | `input.*` |
-| `detection` | YOLO inference on selected frames | `detection.*`, `detection_skip_frames` |
+| `input` | `FrameSource` via OpenCV: local file or RTSP; same `VideoFrame` type either way | `input.*` |
+| `detection` | YOLO face detector behind `FaceDetector`; `DetectionSkipPolicy` | `detection.*`, `detection_skip_frames` |
 | `tracking` | ByteTrack: box → track_id | `tracking.*` |
 | `recognition` | Align, embed, cosine match to gallery | `recognition.*` |
 | `registration` | Create `face_id`, save crop, insert DB | `registration.*` |
 | `database` | CRUD, transactions, visit pairing | `database.*` |
 | `logging` | stdlib logging + business event file | `logging.*` |
 | `pipeline` | Frame loop, skip-frame policy, backpressure | `performance.*` |
+
+---
+
+## Complete pipeline — all modules implemented
+
+```mermaid
+flowchart TB
+  subgraph input [Input]
+    V[Video file / RTSP]
+    CFG[config.json]
+  end
+  subgraph detect [Detection]
+    SKIP[DetectionSkipPolicy]
+    YOLO[YoloFaceDetector]
+  end
+  subgraph track [Tracking]
+    BT[ByteTrackFaceTracker]
+    TR[TrackedFace track_id+bbox]
+  end
+  subgraph recognize [Recognition / Registration]
+    IFE[InsightFaceEngine buffalo_l 512-dim]
+    REG[FaceRegistrar gallery search / register]
+    FID[persistent face_id]
+  end
+  subgraph pipeline [Entry/Exit + Visits]
+    FSM[EntryExitFSM line-crossing]
+    VM[VisitManager]
+  end
+  subgraph persist [Persistence]
+    DB[(SQLite persons embeddings events visits)]
+    LOG[logs/events.log]
+    SNAP[data/events/YYYY-MM-DD/ snapshots]
+  end
+
+  CFG --> V --> SKIP
+  SKIP -->|detect frame| YOLO --> BT
+  SKIP -->|skip frame| BT
+  BT --> TR --> IFE --> REG --> FID
+  FID --> FSM --> VM
+  VM --> DB
+  VM --> LOG
+  VM --> SNAP
+  REG --> DB
+```
+
+**Identity rule enforced throughout:**
+- `track_id` = temporary ByteTrack motion identity (resets on re-entry)
+- `face_id` = persistent SQLite identity (survives track resets, assigned by InsightFace gallery)
+
+**Verified end-to-end on `data/videos/video_sample1.mp4`:**
+| Stage | Result |
+|-------|--------|
+| YOLO detection (30 frames, skip=2) | 98 face detections across 10 frames |
+| ByteTrack | 11 unique track_ids, 100% overlap between frames |
+| InsightFace recognition | 70 embeddings, 10 new registrations, 60 re-IDs |
+| Entry/exit FSM | 2 ENTRY + 2 EXIT events (longer run) |
+| SQLite | 15 persons, 15 embeddings, 2 closed visits |
+| events.log | REGISTER / RECOGNIZE / ENTRY / EXIT / SYSTEM JSON-lines |
+| Event snapshots | `data/events/2026-10-04/*.jpg` |
 
 ---
 

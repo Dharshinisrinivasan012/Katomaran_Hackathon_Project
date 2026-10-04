@@ -1,10 +1,10 @@
 {
   "project_name": "Intelligent Face Tracker",
-  "version": "0.1.0-planning",
+  "version": "1.0.0",
 
   "input": {
-    "source_type": "video",
-    "video_path": "data/samples/entrance.mp4",
+    "source_type": "file",
+    "video_path": "data/videos/video_sample1.mp4",
     "rtsp_url": "",
     "reconnect_delay_sec": 5,
     "max_reconnect_attempts": 0,
@@ -14,6 +14,8 @@
   },
 
   "detection": {
+    "backend": "ultralytics",
+    "model_name": "yolov8-face",
     "model_path": "models/yolov8n-face.pt",
     "confidence_threshold": 0.5,
     "iou_threshold": 0.45,
@@ -49,12 +51,12 @@
 
   "entry_exit": {
     "mode": "line_crossing",
-    "entry_line": [[0.1, 0.5], [0.9, 0.5]],
-    "exit_line": [[0.1, 0.7], [0.9, 0.7]],
+    "entry_line": [[0.0, 0.12], [1.0, 0.12]],
+    "exit_line": [[0.0, 0.90], [1.0, 0.90]],
     "direction_entry": "top_to_bottom",
     "direction_exit": "bottom_to_top",
-    "debounce_sec": 2.0,
-    "min_track_age_frames": 10
+    "debounce_sec": 1.0,
+    "min_track_age_frames": 3
   },
 
   "database": {

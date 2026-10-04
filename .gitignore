@@ -41,6 +41,10 @@ desktop.ini
 # Project data (runtime artifacts — keep structure via .gitkeep)
 data/crops/**
 data/faces/**
+data/samples/**
+!data/samples/.gitkeep
+data/videos/**
+!data/videos/.gitkeep
 data/sqlite/*.db
 data/sqlite/*.db-journal
 data/sqlite/*.db-wal
@@ -58,6 +62,14 @@ logs/
 secrets.json
 config.local.json
 
+# Local media (official sample videos are not committed)
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.webm
+*.m4v
+
 # Models (large downloads — document paths in config)
 models/
 weights/
@@ -69,6 +81,18 @@ weights/
 .ipynb_checkpoints/
 tmp/
 temp/
+
+# Submission sample output — keep docs/summaries, exclude large binaries
+sample_output/*.db
+sample_output/*.db-journal
+sample_output/*.jpg
+sample_output/*.jpeg
+sample_output/*.png
+
+# Temporary config overrides
+config_verify.json
+config_*.json
+!config.json
 
 # Test / coverage
 .pytest_cache/

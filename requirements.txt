@@ -1,28 +1,26 @@
-# Core vision & I/O
+# ── Core vision & I/O ────────────────────────────────────────────────────
 opencv-python>=4.8.0
 numpy>=1.24.0
 
-# Face detection (YOLO via Ultralytics)
+# ── YOLO face detection ───────────────────────────────────────────────────
+# Ultralytics provides YOLO inference AND the bundled BYTETracker used for
+# multi-face tracking. Installing one package covers both.
 ultralytics>=8.0.0
 
-# Face recognition / embeddings (InsightFace + ONNX Runtime)
+# ── Face recognition / embeddings ────────────────────────────────────────
+# InsightFace buffalo_l bundle is auto-downloaded on first run (~280 MB)
+# to ~/.insightface/models/buffalo_l/ — not committed to git.
 insightface>=0.7.3
 onnxruntime>=1.16.0
-# Optional GPU acceleration (install manually if CUDA available):
+
+# Optional GPU acceleration (install manually when CUDA is available):
 # onnxruntime-gpu>=1.16.0
 
-# Tracking (ByteTrack — often bundled with Ultralytics or standalone)
-# If using standalone implementation:
-lapx>=0.5.2
-filterpy>=1.4.5
-scipy>=1.10.0
-
-# Config & utilities
-PyYAML>=6.0
-
-# Dev / test (optional for implementation phase)
+# ── Testing ───────────────────────────────────────────────────────────────
 pytest>=7.4.0
 pytest-cov>=4.1.0
 
-# Note: sqlite3 is part of the Python standard library — do not pip-install.
-# Note: Do NOT use the face_recognition library (project requirement).
+# ── Notes ─────────────────────────────────────────────────────────────────
+# sqlite3    — Python standard library, no pip install needed.
+# ByteTrack  — bundled inside ultralytics.trackers, no separate package needed.
+# Do NOT install the face_recognition library (project requirement).

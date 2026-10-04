@@ -132,6 +132,8 @@ class InputConfig:
 
 @dataclass(frozen=True)
 class DetectionConfig:
+    backend: str
+    model_name: str
     model_path: str
     confidence_threshold: float
     iou_threshold: float
@@ -237,9 +239,9 @@ class AppConfig:
 def _parse_input(section: Mapping[str, Any]) -> InputConfig:
     parent = "input"
     source_type = _require_str(section, "source_type", parent=parent)
-    if source_type not in ("video", "rtsp"):
+    if source_type not in ("file", "rtsp"):
         raise ConfigValidationError(
-            "source_type must be 'video' or 'rtsp'", path="input.source_type"
+            "source_type must be 'file' or 'rtsp'", path="input.source_type"
         )
     return InputConfig(
         source_type=source_type,
@@ -259,7 +261,14 @@ def _parse_input(section: Mapping[str, Any]) -> InputConfig:
 
 def _parse_detection(section: Mapping[str, Any]) -> DetectionConfig:
     parent = "detection"
+    backend = _require_str(section, "backend", parent=parent)
+    if backend not in ("ultralytics",):
+        raise ConfigValidationError(
+            "backend must be 'ultralytics'", path="detection.backend"
+        )
     return DetectionConfig(
+        backend=backend,
+        model_name=_require_str(section, "model_name", parent=parent),
         model_path=_require_str(section, "model_path", parent=parent),
         confidence_threshold=_require_number(
             section, "confidence_threshold", parent=parent, min_value=0, max_value=1
@@ -277,8 +286,13 @@ def _parse_detection(section: Mapping[str, Any]) -> DetectionConfig:
 
 def _parse_tracking(section: Mapping[str, Any]) -> TrackingConfig:
     parent = "tracking"
+    tracker_type = _require_str(section, "tracker_type", parent=parent)
+    if tracker_type not in ("bytetrack",):
+        raise ConfigValidationError(
+            "tracker_type must be 'bytetrack'", path="tracking.tracker_type"
+        )
     return TrackingConfig(
-        tracker_type=_require_str(section, "tracker_type", parent=parent),
+        tracker_type=tracker_type,
         track_thresh=_require_number(
             section, "track_thresh", parent=parent, min_value=0, max_value=1
         ),

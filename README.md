@@ -2,49 +2,80 @@
 
 Automated entrance monitoring: detect faces in video or RTSP streams, track individuals with ByteTrack, recognize or auto-register visitors via InsightFace embeddings, and count **unique visits** with paired entry and exit events stored in SQLite.
 
-**Current phase:** Phase 2 foundation — config loader and SQLite layer implemented; CV pipeline not started. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
+**Status:** Complete end-to-end pipeline implemented and verified. All 93 tests pass.
 
 ---
 
 ## Problem statement
 
-Official hackathon brief: **[docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf)**.
+Official hackathon brief: **[docs/katomaran-problem-statement.pdf](docs/katomaran-problem-statement.pdf)**
 
-**Objective (from brief):** Build an AI-driven unique visitor counter on a video stream—detect, track, and recognize faces; auto-register new faces; log every entry and exit with a timestamped crop in the filesystem and metadata in the database; maintain an accurate **unique** visitor count.
+**Objective (from brief):** Build an AI-driven unique visitor counter on a video stream — detect, track, and recognize faces; auto-register new faces; log every entry and exit with a timestamped crop in the filesystem and metadata in the database; maintain an accurate **unique** visitor count.
 
-**Sample video (development):** [Google Drive folder](https://drive.google.com/drive/folders/15YCN3CYb97GyIoNUV6NJxGNIf-rUBFUJ?usp=sharing) (provided in the problem statement). **Interview testing** uses a live **RTSP** stream instead of the file.
+### Official sample video source
+
+Development sample videos: **https://drive.google.com/drive/folders/15YCN3CYb97GyIoNUV6NJxGNIf-rUBFUJ?usp=sharing**
+
+Large media files are not committed to git. After downloading, set `input.video_path` in `config.json`.
 
 ---
 
-## Features (planned / in progress)
+## Quick start
 
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for implementation status.
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
 
-- Detect faces in real time (YOLO-based face detector).
-- Maintain stable track IDs across frames (ByteTrack).
-- Assign a persistent **Face ID** via embedding similarity (InsightFace); auto-register unknown faces after quality gates.
-- Record **one entry and one exit per visit**; count unique visitors without incrementing on mere re-recognition.
-- Persist persons, embeddings, events, and visits in **SQLite**; store face crops on the local filesystem.
-- Support **sample video files** and **RTSP** cameras through `config.json`.
+# 2. Place YOLO face weights at models/yolov8n-face.pt
+#    Download: https://github.com/akanametov/yolo-face/releases/download/1.0.0/yolov8n-face.pt
+#    InsightFace buffalo_l (~280 MB) downloads automatically on first run.
+
+# 3. Set your video path in config.json  OR  pass it on the CLI:
+python -m src.pipeline.main --video data/videos/video_sample1.mp4 --no-display --max-frames 30
+
+# 4. For a fully isolated fresh demo (no DB side-effects):
+python -m src.pipeline.main --no-display --max-frames 30 --save-dir tmp/demo --db-path :memory:
+
+# 5. Full video, save annotated frames:
+python -m src.pipeline.main --no-display --save-dir tmp/run
+```
+
+---
+
+## Features
+
+| Feature | Status |
+|---------|--------|
+| YOLO face detection | ✅ `yolov8n-face.pt` via Ultralytics |
+| ByteTrack multi-face tracking | ✅ Stable track IDs across skipped frames |
+| InsightFace ArcFace embeddings | ✅ `buffalo_l`, 512-dim, L2-normalized |
+| Auto-registration of new faces | ✅ UUID `face_id`, SQLite + crop saved |
+| Re-identification (gallery match) | ✅ Cosine similarity, threshold 0.45 |
+| Entry / exit detection | ✅ Line-crossing FSM, configurable geometry |
+| Unique visitor counting | ✅ One row per person; increments only on new ENTRY |
+| SQLite persistence | ✅ persons, embeddings, events, visits |
+| Event audit log (`events.log`) | ✅ JSON-lines, rotating file |
+| Entry/exit face crop snapshots | ✅ `data/events/YYYY-MM-DD/` |
+| File video input | ✅ OpenCV, config-driven |
+| RTSP stream input | ✅ Config-driven, reconnect backoff |
+| Configurable everything | ✅ All thresholds/paths in `config.json` |
 
 ---
 
 ## Tech stack
 
 | Layer | Choice |
-|--------|--------|
+|-------|--------|
 | Language | Python 3.10+ |
-| Detection | YOLO (Ultralytics), face-specific weights |
-| Tracking | ByteTrack |
-| Recognition | InsightFace → ONNX Runtime |
+| Detection | YOLO (Ultralytics) — `yolov8n-face.pt` |
+| Tracking | ByteTrack (via `ultralytics.trackers`) |
+| Recognition | InsightFace `buffalo_l` → ArcFaceONNX |
+| Embeddings | ONNX Runtime (CPU; CUDA optional) |
 | Video I/O | OpenCV |
-| Database | SQLite (stdlib `sqlite3`) |
+| Database | SQLite (`sqlite3` stdlib) |
 | Configuration | JSON (`config.json`) |
 | Logging | Python `logging` + `logs/events.log` |
-
-**Recognition (per brief):** InsightFace (selected); ArcFace / Dlib-ArcFace are acceptable alternatives. **Do not use** the `face_recognition` Python library.
-
-**Database:** **SQLite only** (chosen from the brief’s allowed options: SQLite, MongoDB, or PostgreSQL).
+| Tests | pytest (93 tests) |
 
 ---
 
@@ -52,142 +83,200 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) for implementation status.
 
 ```
 D:\katomaran\
-├── README.md
-├── ARCHITECTURE.md
-├── AI_PLANNING.md
-├── AI_PROMPTS.md
-├── PROJECT_STATUS.md
-├── config.json
+├── README.md               # This file
+├── ARCHITECTURE.md         # System diagrams and schema
+├── AI_PLANNING.md          # Technical plan and phase notes
+├── AI_PROMPTS.md           # AI prompt log (hackathon requirement)
+├── PROJECT_STATUS.md       # Completion checklist
+├── config.json             # All runtime configuration
 ├── requirements.txt
 ├── .gitignore
 ├── src/
-│   ├── input/          # Video file & RTSP frame sources
-│   ├── detection/      # YOLO face detection (skip frames from config)
-│   ├── tracking/       # ByteTrack association
-│   ├── recognition/    # InsightFace embed & match
-│   ├── registration/   # Auto-register unknown tracks
-│   ├── database/       # SQLite access & migrations
-│   ├── logging/        # App logging & event writers
-│   ├── config/         # Load & validate config.json
-│   └── pipeline/       # End-to-end orchestration
-├── tests/
-└── data/
-    ├── samples/        # Sample videos for dev
-    ├── crops/          # Ephemeral / debug crops
-    ├── faces/          # Registered face images by Face ID
-    ├── events/         # Optional entry/exit snapshots
-    └── sqlite/         # face_tracker.db
-├── logs/               # events.log (runtime)
-└── models/             # Downloaded YOLO / ONNX weights (gitignored)
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for diagrams and [AI_PLANNING.md](AI_PLANNING.md) for implementation notes.
-
----
-
-## Configuration
-
-All runtime tuning lives in **`config.json`** (not hardcoded). Important keys:
-
-| Key | Purpose |
-|-----|---------|
-| `input.source_type` | `"video"` or `"rtsp"` |
-| `input.video_path` / `input.rtsp_url` | Source paths |
-| `detection.detection_skip_frames` | Run detector every N+1 frames; track on intermediate frames |
-| `detection.confidence_threshold` | Min detection score |
-| `recognition.similarity_threshold` | Cosine match for re-id |
-| `registration.auto_register_unknown` | Enable auto-enrollment |
-| `entry_exit.*` | Virtual lines and debounce for visit pairing |
-| `database.sqlite_path` | DB file location |
-| `logging.file_path` | Typically `logs/events.log` |
-
-Copy and adjust paths for your machine before running (implementation phase).
-
----
-
-## SQLite overview
-
-- **`persons`** — one row per unique Face ID (visitor identity).
-- **`face_embeddings`** — embedding vectors linked to `persons` (versioned, deduplicated).
-- **`events`** — append-only log: REGISTER, RECOGNIZE, ENTRY, EXIT, etc.
-- **`visits`** — one row per completed or in-progress visit; enforces one entry + one exit pairing.
-
-Full DDL and rationale: [ARCHITECTURE.md](ARCHITECTURE.md#sqlite-schema) and [AI_PLANNING.md](AI_PLANNING.md).
-
----
-
-## Entry / exit and visitor counting (summary)
-
-1. **Tracking** assigns a `track_id` per face in the scene.
-2. **Recognition** maps stable tracks to a **`face_id`** (existing or new registration).
-3. **Line crossing** (configurable) emits at most one **ENTRY** per visit when the track crosses the entry line in the configured direction; **EXIT** when crossing the exit line.
-4. **Unique visitors:** `persons.total_visits` (or equivalent) increments only when a **new visit** starts (ENTRY for a face not already in an open visit), not when the same person is recognized again on subsequent frames or days without a new visit policy trigger.
-5. Re-identification links returning visitors to the same `face_id` without creating duplicate person rows.
-
-Details: [AI_PLANNING.md](AI_PLANNING.md#entry-exit-and-visit-counting).
-
----
-
-## Data flow (summary)
-
-```
-Input (video/RTSP) → frames → [skip] Detection → boxes
-  → Tracking (ByteTrack) → track states
-  → Recognition (crop → embed → match/register) → face_id
-  → Entry/exit logic → events + visits
-  → SQLite + filesystem crops + events.log
+│   ├── config/             # Load & validate config.json
+│   ├── database/           # SQLite schema + repositories
+│   ├── input/              # Video file & RTSP frame sources
+│   ├── detection/          # YOLO face detection + skip-frame policy
+│   ├── tracking/           # ByteTrack adapter
+│   ├── recognition/        # InsightFace embed + cosine gallery match
+│   ├── registration/       # Auto-register unknown faces
+│   ├── logging/            # setup_logging() + events.log writer
+│   ├── pipeline/
+│   │   ├── entry_exit.py   # Line-crossing FSM (per face_id)
+│   │   ├── visit_manager.py# Open/close visits, save snapshots
+│   │   └── main.py         # Full end-to-end pipeline entry point
+│   ├── preview_detections.py   # Dev: YOLO boxes only
+│   ├── preview_tracking.py     # Dev: YOLO + ByteTrack IDs
+│   └── preview_recognition.py  # Dev: YOLO + ByteTrack + InsightFace
+├── tests/                  # 93 pytest tests
+├── data/
+│   ├── crops/              # Registration face crops
+│   ├── events/             # Entry/exit snapshots (YYYY-MM-DD/)
+│   ├── faces/              # Registered face images by face_id
+│   ├── sqlite/             # face_tracker.db
+│   └── videos/             # Local sample video (gitignored)
+├── models/                 # YOLO .pt weights (gitignored)
+├── logs/                   # events.log (runtime)
+└── sample_output/          # Sample output for submission review
 ```
 
 ---
 
-## Setup (after implementation phase)
+## Configuration (`config.json`)
 
-1. Create a virtual environment and install dependencies:  
-   `pip install -r requirements.txt`  
-   (Planning phase does **not** run install automatically.)
-2. Download YOLO face weights and InsightFace models into `models/` per deployment docs.
-3. Edit `config.json` for input source and hardware (`detection.device`, `recognition.providers`).
-4. Run the pipeline entrypoint (TBD in `src/pipeline/`).
+All runtime values are configurable. Key settings:
 
-Optional: set `CONFIG_PATH` to load a non-default `config.json`.
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `input.source_type` | `"file"` | `"file"` or `"rtsp"` |
+| `input.video_path` | `"data/videos/video_sample1.mp4"` | Local video path |
+| `input.rtsp_url` | `""` | RTSP URL for live camera |
+| `detection.model_path` | `"models/yolov8n-face.pt"` | YOLO weights (not in git) |
+| `detection.confidence_threshold` | `0.5` | Min face detection score |
+| `detection.detection_skip_frames` | `2` | Detect every N+1 frames |
+| `recognition.similarity_threshold` | `0.45` | Cosine match for re-ID |
+| `recognition.providers` | `["CPUExecutionProvider"]` | ONNX providers |
+| `registration.auto_register_unknown` | `true` | Auto-enroll new faces |
+| `entry_exit.entry_line` | `[[0.1,0.5],[0.9,0.5]]` | Normalized entry line |
+| `entry_exit.exit_line` | `[[0.1,0.7],[0.9,0.7]]` | Normalized exit line |
+| `entry_exit.direction_entry` | `"top_to_bottom"` | Crossing direction |
+| `entry_exit.debounce_sec` | `2.0` | Min seconds between events |
+| `entry_exit.min_track_age_frames` | `10` | Min frames before triggering |
+| `database.sqlite_path` | `"data/sqlite/face_tracker.db"` | DB location |
+| `logging.file_path` | `"logs/events.log"` | Audit log location |
+| `paths.events_snapshot_dir` | `"data/events"` | Entry/exit crop directory |
+
+### RTSP / live camera
+
+```json
+"input": {
+  "source_type": "rtsp",
+  "rtsp_url": "rtsp://user:pass@host:554/stream"
+}
+```
+
+Then run `python -m src.pipeline.main --no-display`.
+
+---
+
+## Pipeline entry point
+
+```
+python -m src.pipeline.main [OPTIONS]
+
+Options:
+  --config PATH      Path to config.json (default: project root config.json)
+  --video PATH       Override input video path (skips config input.video_path)
+  --max-frames N     Stop after N frames (0 = full video)
+  --save-dir DIR     Save annotated frames as JPEGs to DIR
+  --no-display       Headless mode — no GUI window (use on servers / CI)
+  --db-path PATH     Override SQLite path (use :memory: for clean isolated demo)
+```
+
+The pipeline runs:
+
+```
+Video/RTSP input
+  → YOLO face detection (every detection_skip_frames+1 frames)
+  → ByteTrack → temporary track_id per face
+  → InsightFace buffalo_l → 512-dim embedding
+  → Gallery search → existing face_id (re-ID) or new registration
+  → EntryExitFSM → ENTRY / EXIT line-crossing events
+  → VisitManager → open/close visits in SQLite, save face snapshots
+  → events.log (JSON-lines per event)
+  → Final summary printed to console
+```
+
+End-of-run summary:
+
+```
+============================================================
+  INTELLIGENT FACE TRACKER — RUN SUMMARY
+============================================================
+  Frames processed      : 30
+  Detection frames      : 10
+  Total YOLO detections : 98
+  Embeddings extracted  : 70
+  New registrations     : 10
+  Re-identifications    : 60
+  Total entries (ENTRY) : 2
+  Total exits   (EXIT)  : 2
+  Unique visitors (DB)  : 15
+  Total visits (visits) : 2
+  Open visits remaining : 0
+============================================================
+  Database  : data/sqlite/face_tracker.db
+  Events log: logs/events.log
+  Snapshots : data/events/
+============================================================
+```
+
+---
+
+## Identity rules
+
+| Identity | Source | Lifetime | Usage |
+|----------|--------|----------|-------|
+| `track_id` | ByteTrack | **Temporary** — resets when person re-enters frame | Motion association only |
+| `face_id` | InsightFace gallery | **Persistent** — survives track resets; stored in SQLite | All identity decisions |
+
+A new ByteTrack `track_id` never creates a new `face_id`. Recognition (cosine similarity against the embedding gallery) decides identity.
+
+---
+
+## Entry / exit and unique visitor counting
+
+- **ENTRY** fires when a face's bbox bottom-centre crosses the configured entry line in the configured direction, after `min_track_age_frames` frames and `debounce_sec` cooldown.
+- **EXIT** fires on exit line crossing. If a track is lost for more than `track_buffer` frames while the face is INSIDE, EXIT is auto-issued.
+- Exactly **one ENTRY and one EXIT** per visit (enforced by `open_visit` / `close_visit` in the database layer).
+- **`persons.total_visits`** increments only on a new ENTRY — never on re-recognition of the same face.
+- **Unique visitors** = number of rows in `persons` table (one row per persistent `face_id`).
+
+---
+
+## SQLite schema
+
+| Table | Purpose |
+|-------|---------|
+| `persons` | One row per unique visitor (`face_id`, `total_visits`, timestamps) |
+| `face_embeddings` | 512-dim float32 blobs; SHA-256 deduplication |
+| `events` | Append-only audit log (REGISTER, RECOGNIZE, ENTRY, EXIT, …) |
+| `visits` | One row per visit; `entry_event_id` + `exit_event_id` pairing |
+| `track_sessions` | Optional: track_id → face_id mapping for debugging |
+| `daily_stats` | Optional: materialized daily counters |
+
+Full DDL: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
 ## Logging
 
-- **Python logging:** module loggers, level from config.
-- **`logs/events.log`:** structured business events (entry, exit, register, errors) for audit and debugging.
+- **Console:** INFO level by default (config: `logging.level`).
+- **`logs/events.log`:** JSON-lines per business event, rotating at 10 MB.
+
+Sample log lines:
+```json
+{"event":"REGISTER","face_id":"FT-abc123...","track_id":1,"frame":0,"ts":"2026-10-04T04:20:00+00:00"}
+{"event":"RECOGNIZE","face_id":"FT-abc123...","track_id":1,"sim":0.8954,"frame":3,"ts":"..."}
+{"event":"ENTRY","face_id":"FT-abc123...","track_id":1,"visit_id":1,"frame":57,"snapshot":"data/events/2026-10-04/entry_abc123.jpg","ts":"..."}
+{"event":"EXIT","face_id":"FT-abc123...","track_id":1,"visit_id":1,"frame":79,"snapshot":"data/events/2026-10-04/exit_abc123.jpg","ts":"..."}
+{"event":"SYSTEM","message":"pipeline finished","frames":90,"unique_visitors":15,"entries":2,"exits":2,"ts":"..."}
+```
 
 ---
 
-## CPU / GPU
+## Development previews
 
-- **CPU:** Default ONNX CPU provider; smaller YOLO model; increase `detection_skip_frames` to reduce load.
-- **GPU:** CUDA-enabled PyTorch/ONNX where available; set `detection.device` and `recognition.providers` accordingly.
+```bash
+# YOLO detection only
+python -m src.preview_detections --no-display --max-frames 30 --save-dir tmp/preview
 
-See [AI_PLANNING.md](AI_PLANNING.md#cpu-and-gpu-considerations).
+# ByteTrack tracking
+python -m src.preview_tracking --no-display --max-frames 30 --save-dir tmp/preview_tracking
 
----
-
-## Edge cases (high level)
-
-Occlusion, missed detections, track ID switches, duplicate registration, RTSP disconnects, multiple faces in one track, and rapid line bouncing — mitigations documented in [AI_PLANNING.md](AI_PLANNING.md#edge-cases).
-
----
-
-## Sample output (submission)
-
-Per the problem statement, the final submission must include sample output from the sample video: **`logs/events.log`**, entry/exit **cropped images**, and **SQLite** rows. Placeholders until the CV pipeline runs in a later phase.
-
----
-
-## Assumptions
-
-- **SQLite** is used as the sole database (explicit team choice under the brief).
-- **ByteTrack** is used for tracking (brief allows OpenCV / DeepSort / ByteTrack).
-- **Entry/exit** will be implemented so each face gets exactly one entry and one exit event per appearance; geometry is configurable (`entry_exit` in `config.json`)—including line-based zones or frame-boundary detection aligned with “entering/exiting the camera frame” in the brief.
-- Entry/exit snapshot folders are configurable; the brief suggests a structure such as `logs/entries/YYYY-MM-DD/`—this project uses `paths.events_snapshot_dir` (see `config.json`) unless adjusted at demo time.
-- A **demo video** (Loom or YouTube) explaining and demonstrating the solution is **required for submission review** (see below).
+# Recognition + registration (ephemeral DB)
+python -m src.preview_recognition --no-display --max-frames 30 \
+    --save-dir tmp/preview_recognition --db-path :memory:
+```
 
 ---
 
@@ -198,38 +287,70 @@ pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
-Integration testing on the sample video and RTSP is planned for later phases.
+**93 tests, 0 failures.** Coverage: config, database, input, detection, tracking, recognition, pipeline (entry/exit FSM + visit manager). Integration tests that require local YOLO weights or InsightFace buffalo_l are run only when those files exist.
+
+---
+
+## CPU / GPU
+
+- **CPU (default):** `CPUExecutionProvider` for InsightFace; `detection.device: "auto"`. Increase `detection_skip_frames` (e.g. 4) to reduce load on slower hardware.
+- **GPU:** Install `onnxruntime-gpu`. Set `detection.device: "cuda:0"` and `recognition.providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]`.
+
+---
+
+## Sample output
+
+See `sample_output/` for:
+- `events.log` — real events from a pipeline run
+- `face_tracker.db` — SQLite database with registered persons and visits
+- `sample_entry.jpg` / `sample_exit.jpg` — real entry/exit face crop snapshots
+- `sample_annotated_frame.jpg` — annotated frame with track IDs and entry/exit lines
+
+---
+
+## Assumptions
+
+- SQLite is the sole database (explicit choice under the brief's allowed options).
+- ByteTrack is used for tracking (brief allows OpenCV / DeepSORT / ByteTrack).
+- Entry/exit geometry uses configurable virtual lines placed at the scene entrance. For camera angles where the frame boundary itself marks entry/exit, place the entry line near the top edge (e.g. `y=0.1`) and the exit line near the bottom (e.g. `y=0.9`).
+- InsightFace buffalo_l auto-downloads ~280 MB on first run to `~/.insightface/models/buffalo_l/`.
+- A demo video (Loom or YouTube) is required for submission review.
+
+---
+
+## Limitations
+
+- Line-crossing geometry requires manual calibration for the deployment camera angle.
+- `min_track_age_frames=10` means very brief appearances (< 10 frames) won't trigger ENTRY.
+- No web dashboard; pipeline prints a console summary.
+- CPU inference is ~3–5 seconds per detection frame on a laptop (4K video); use `detection_skip_frames=4` or resize input for real-time performance.
 
 ---
 
 ## AI usage
 
-AI-assisted development is encouraged by the brief. Prompts used for important steps are recorded in [AI_PROMPTS.md](AI_PROMPTS.md) for interview review.
+AI-assisted development is encouraged by the brief. Prompts used for all major implementation steps are recorded in [AI_PROMPTS.md](AI_PROMPTS.md).
 
 ---
 
-## Demo video (submission)
+## Demo video (submission requirement)
 
-<!-- Required by Katomaran problem statement — submission may not be reviewed without this -->
-**Demo link (Loom or YouTube):** _TBD — required for submission review per the problem statement._
+**Demo link (Loom or YouTube):** _TODO — record a 2–3 minute walkthrough showing the pipeline running on the sample video before the submission deadline._
 
-Submit the GitHub repository via the hackathon Google Form before **12:00 PM, Sunday, October 4, 2026** (per the problem statement).
+Submit the GitHub repository via the hackathon Google Form before **12:00 PM, Sunday, October 4, 2026**.
 
 ---
 
 ## Documentation index
 
 | Document | Contents |
-|----------|----------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System context, Mermaid diagrams, schema |
-| [AI_PLANNING.md](AI_PLANNING.md) | Technical plan, strategies, phases |
-| [AI_PROMPTS.md](AI_PROMPTS.md) | AI prompt log |
-| [PROJECT_STATUS.md](PROJECT_STATUS.md) | Checklist |
+|----------|---------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System diagrams, module map, SQLite schema |
+| [AI_PLANNING.md](AI_PLANNING.md) | Technical decisions, phase plan, edge cases |
+| [AI_PROMPTS.md](AI_PROMPTS.md) | Full AI prompt log |
+| [PROJECT_STATUS.md](PROJECT_STATUS.md) | Implementation checklist |
+| [sample_output/](sample_output/) | Real run output for submission review |
 
 ---
-
-## License / attribution
-
-Hackathon submission for Katomaran. Add license text when team decides.
 
 This project is a part of a hackathon run by https://katomaran.com

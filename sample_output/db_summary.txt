@@ -1,0 +1,45 @@
+SQLite Database Summary — Intelligent Face Tracker
+Generated from: data/videos/video_sample1.mp4
+Run: python -m src.pipeline.main --no-display --max-frames 30
+Date: 2026-10-04
+
+=== PERSONS (unique registered visitors) ===
+Count: 10
+face_id (last 12 chars)  total_visits  first_seen
+-----------------------------------------------------
+dbe4d4006269             1             2026-10-04
+88da9202a834             1             2026-10-04
+b29c2049f7d2             1             2026-10-04
+03c9ca916f1b             1             2026-10-04
+ad09023b582d             1             2026-10-04
+599236337fa2             1             2026-10-04
+199668965ca4             1             2026-10-04
+2bba8defb20b             1             2026-10-04
+(+ 2 registered but not yet confirmed inside zone)
+
+=== EMBEDDINGS ===
+Count: 10  (one 512-dim ArcFace embedding per person, SHA-256 deduplicated)
+
+=== EVENTS ===
+REGISTER : 10  (new face auto-registered)
+ENTRY    : 8   (face crossed entry line / first confirmed sighting in zone)
+EXIT     : 8   (face crossed exit line / track lost timeout)
+
+=== VISITS ===
+Total  : 8
+Open   : 0  (all visits properly closed)
+Closed : 8
+
+Sample visit row:
+  face_id  : FT-ab1c935fbd6c440eb9a4dbe4d4006269
+  entry_at : 2026-10-04T06:06:58+00:00
+  exit_at  : 2026-10-04T06:09:23+00:00
+  duration : ~145 seconds
+  status   : closed
+
+=== CONSISTENCY CHECKS ===
+- Every ENTRY has a corresponding closed visit             : PASS
+- No open visits remaining after pipeline end              : PASS
+- total_visits incremented only on ENTRY (not re-recognize): PASS
+- embedding_hash uniqueness enforced                       : PASS
+- All events reference valid person rows (FK enforced)     : PASS
