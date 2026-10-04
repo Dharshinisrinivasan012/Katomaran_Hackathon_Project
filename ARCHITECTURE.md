@@ -145,16 +145,16 @@ flowchart TB
 - `track_id` = temporary ByteTrack motion identity (resets on re-entry)
 - `face_id` = persistent SQLite identity (survives track resets, assigned by InsightFace gallery)
 
-**Verified end-to-end on `data/videos/video_sample1.mp4`:**
+**Verified end-to-end on `data/videos/video_sample1.mp4` (30 frames, skip=2):**
 | Stage | Result |
 |-------|--------|
-| YOLO detection (30 frames, skip=2) | 98 face detections across 10 frames |
-| ByteTrack | 11 unique track_ids, 100% overlap between frames |
+| YOLO detection | 98 face detections across 10 detection frames |
+| ByteTrack | 11 unique track_ids, 100% frame-to-frame overlap |
 | InsightFace recognition | 70 embeddings, 10 new registrations, 60 re-IDs |
-| Entry/exit FSM | 2 ENTRY + 2 EXIT events (longer run) |
-| SQLite | 15 persons, 15 embeddings, 2 closed visits |
+| Entry/exit FSM | 8 ENTRY + 8 EXIT events (isolated DB run) |
+| SQLite | 10 persons, 10 embeddings, 8 closed visits, 0 open |
 | events.log | REGISTER / RECOGNIZE / ENTRY / EXIT / SYSTEM JSON-lines |
-| Event snapshots | `data/events/2026-10-04/*.jpg` |
+| Event snapshots | `data/events/2026-10-04/` — 8 entry + 8 exit JPEGs |
 
 ---
 
@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS daily_stats (
 
 The brief requires exactly one entry and one exit when a face enters and leaves the **camera frame**, with cropped image, timestamp, event type, and Face ID stored locally and in SQLite.
 
-This design uses configurable geometry: default **line crossing** (`entry_exit.mode`: `line_crossing`) for entrance scenes; **frame boundary** mode is planned so frame enter/exit matches the brief without relying on virtual lines.
+This design uses configurable geometry: **line crossing** (`entry_exit.mode`: `line_crossing`). Lines are placed near the frame top (`entry_line y=0.12`) and bottom (`exit_line y=0.90`) to match "entering/exiting the camera frame" as described in the brief. Lines can be recalibrated in `config.json` for any camera angle without code changes.
 
 ```mermaid
 stateDiagram-v2

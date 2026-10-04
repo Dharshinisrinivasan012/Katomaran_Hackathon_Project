@@ -82,15 +82,11 @@ weights/
 tmp/
 temp/
 
-# Submission sample output — keep docs/summaries, exclude large binaries
+# Submission sample output — keep docs/text/small images, exclude large DB binary
 sample_output/*.db
 sample_output/*.db-journal
-sample_output/*.jpg
-sample_output/*.jpeg
-sample_output/*.png
 
 # Temporary config overrides
-config_verify.json
 config_*.json
 !config.json
 

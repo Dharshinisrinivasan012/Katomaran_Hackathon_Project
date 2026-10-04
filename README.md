@@ -2,7 +2,7 @@
 
 Automated entrance monitoring: detect faces in video or RTSP streams, track individuals with ByteTrack, recognize or auto-register visitors via InsightFace embeddings, and count **unique visits** with paired entry and exit events stored in SQLite.
 
-**Status:** Complete end-to-end pipeline implemented and verified. All 93 tests pass.
+**Status:** Complete end-to-end pipeline implemented and verified. All 94 tests pass.
 
 ---
 
@@ -136,11 +136,11 @@ All runtime values are configurable. Key settings:
 | `recognition.similarity_threshold` | `0.45` | Cosine match for re-ID |
 | `recognition.providers` | `["CPUExecutionProvider"]` | ONNX providers |
 | `registration.auto_register_unknown` | `true` | Auto-enroll new faces |
-| `entry_exit.entry_line` | `[[0.1,0.5],[0.9,0.5]]` | Normalized entry line |
-| `entry_exit.exit_line` | `[[0.1,0.7],[0.9,0.7]]` | Normalized exit line |
+| `entry_exit.entry_line` | `[[0.0,0.12],[1.0,0.12]]` | Normalized entry line (top of frame) |
+| `entry_exit.exit_line` | `[[0.0,0.90],[1.0,0.90]]` | Normalized exit line (bottom of frame) |
 | `entry_exit.direction_entry` | `"top_to_bottom"` | Crossing direction |
-| `entry_exit.debounce_sec` | `2.0` | Min seconds between events |
-| `entry_exit.min_track_age_frames` | `10` | Min frames before triggering |
+| `entry_exit.debounce_sec` | `1.0` | Min seconds between events |
+| `entry_exit.min_track_age_frames` | `3` | Min confirmed frames before ENTRY |
 | `database.sqlite_path` | `"data/sqlite/face_tracker.db"` | DB location |
 | `logging.file_path` | `"logs/events.log"` | Audit log location |
 | `paths.events_snapshot_dir` | `"data/events"` | Entry/exit crop directory |
@@ -186,7 +186,7 @@ Video/RTSP input
   → Final summary printed to console
 ```
 
-End-of-run summary:
+End-of-run summary (verified on `data/videos/video_sample1.mp4`, 30 frames):
 
 ```
 ============================================================
@@ -198,15 +198,15 @@ End-of-run summary:
   Embeddings extracted  : 70
   New registrations     : 10
   Re-identifications    : 60
-  Total entries (ENTRY) : 2
-  Total exits   (EXIT)  : 2
-  Unique visitors (DB)  : 15
-  Total visits (visits) : 2
+  Total entries (ENTRY) : 8
+  Total exits   (EXIT)  : 8
+  Unique visitors (DB)  : 10
+  Total visits (visits) : 8
   Open visits remaining : 0
 ============================================================
-  Database  : data/sqlite/face_tracker.db
+  Database  : :memory:  (use --db-path for persistent)
   Events log: logs/events.log
-  Snapshots : data/events/
+  Snapshots : data/events/YYYY-MM-DD/
 ============================================================
 ```
 
@@ -287,7 +287,7 @@ pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
-**93 tests, 0 failures.** Coverage: config, database, input, detection, tracking, recognition, pipeline (entry/exit FSM + visit manager). Integration tests that require local YOLO weights or InsightFace buffalo_l are run only when those files exist.
+**94 tests, 0 failures.** Coverage: config, database, input, detection, tracking, recognition, pipeline (entry/exit FSM + visit manager). Integration tests that require local YOLO weights or InsightFace buffalo_l are run only when those files exist.
 
 ---
 
@@ -321,7 +321,7 @@ See `sample_output/` for:
 ## Limitations
 
 - Line-crossing geometry requires manual calibration for the deployment camera angle.
-- `min_track_age_frames=10` means very brief appearances (< 10 frames) won't trigger ENTRY.
+- `min_track_age_frames=3` means a face must appear in at least 3 consecutive detection cycles before ENTRY fires — prevents phantom detections.
 - No web dashboard; pipeline prints a console summary.
 - CPU inference is ~3–5 seconds per detection frame on a laptop (4K video); use `detection_skip_frames=4` or resize input for real-time performance.
 
